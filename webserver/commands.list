@@ -1,0 +1,4 @@
+{
+	'/cmd/example/test':	['/usr/bin/printf', 'example command'],
+	'/cmd/power/reboot':	['/home/root/.bin/remote-reboot'],
+}
