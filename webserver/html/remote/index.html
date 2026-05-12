@@ -1,0 +1,345 @@
+<!DOCTYPE HTML>
+<!-- WebOS virtual remote by TDGalea. -->
+
+<html>
+	<head>
+		<meta content='width=device-width, initial-scale=1' name='viewport'/>
+		<meta charset="utf8" />
+		<title>LG WebOS TV - Remote</title>
+
+		<style>
+			.pageCenter {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translateX(-50%) translateY(-50%);
+			}
+
+			h1 {
+				color: #E0E0E0;
+				font-family: calibri;
+			}
+
+			h2 {
+				color: #E0E0E0;
+				font-family: calibri;
+			}
+			
+			h3 {
+				color: #E0E0E0;
+				font-family: calibri;
+			}
+
+			font {
+				color: #E0E0E0;
+				font-family: calibri;
+			}
+
+			p {
+				color: #E0E0E0;
+				font-family: calibri;
+			}
+
+			span {
+				color: #E0E0E0;
+				font-family: calibri;
+			}
+
+			a {
+				font-family: calibri;
+			}
+
+			hr {
+				width: "95%";
+			}
+
+			table {
+				border: 1px solid #303030;
+				width: 98%;
+				color: #FFFFFF;
+				text-align: center;
+			}
+
+			td {
+				border: 1px solid #303030;
+				color: #FFFFFF;
+			}
+
+			.backlight .left {
+				width: 30%;
+				height: 128px;
+			}
+
+			.backlight .right {
+				width: 30%;
+				height: 128px;
+			}
+
+			.backlight .center {
+				width: 30%;
+				text-align: center;
+				height: 96px;
+			}
+
+			.description {
+				width: 35%;
+				text-align: center;
+			}
+
+			button {
+				border: none;
+				background-color: #303030;
+				color: #FFFFFF;
+				text-align: center;
+				font-size: 16px;
+				margin: 4px 4px;
+			}
+
+			button:hover {
+				background-color: #404040;
+			}
+
+			.blButton {
+				width: 64px;
+				height: 32px;
+				
+			}
+
+			.rmButton {
+				width: 64px;
+				height: 64px;
+			}
+
+			.cmdFeedback {
+				font-size: 24px;
+			}
+			
+			input[type="range"] {
+				width: 95%;
+			}
+		</style>
+
+		<script>
+			function sendCmd(url, displayTarget) {
+				fetch(url)
+					.then(r => r.text())
+					.then(t => {
+						if (displayTarget) document.getElementById(displayTarget).innerText = t;
+					});
+			}
+			
+			function launchApp(appName) {
+				fetch('/app/' + appName).then(r => r.text()).then(t => {
+					document.getElementById('appResult').innerText = t;
+				});
+			}
+			
+			function setVol() {
+				var vol = document.getElementById('volSlider').value;
+				fetch('/vol/set/' + vol).then(r => r.text()).then(t => {
+					document.getElementById('volDisplay').innerText = t;
+				});
+			}
+			
+			function getVol() {
+				fetch('/vol/get')
+					.then(r => r.text())
+					.then(t => {
+						document.getElementById('volSlider').value = t;
+						document.getElementById('volDisplay').innerText = t;
+					});
+			}
+
+			function setBL() {
+				var bl = document.getElementById('blSlider').value;
+				fetch('/backlight/set/' + bl).then(r => r.text()).then(t => {
+					document.getElementById('blDisplay').innerText = t;
+				});
+			}
+
+			function getBL() {
+				fetch('/backlight/get')
+					.then(r => r.text())
+					.then(t => {
+						document.getElementById('blDisplay').innerText = t;
+						document.getElementById('blSlider').value = t;
+					});
+			}
+
+			
+			function sendText(text) {
+				fetch('/text/' + text);
+			}			
+			
+			window.onload = function() {
+				sendCmd('/cmd/backlight/get', 'blDisplay');
+				getVol();
+			}
+		</script>
+	</head>
+
+	<body bgcolor="#000000">
+		<center>
+			<!--
+			<h2>LG WebOSTV Web Remote</h2>
+			<h3>Because the LG app sucks</h3>
+
+			<hr/><br/>
+			-->
+
+			<!-- Remote begin -->
+			<div class="remote">
+				<table><tr>
+					<td class="center">
+						<br/>
+						<button class="rmButton" onclick="sendCmd('/key/POWER')">PWR</button>
+						<button class="rmButton" onclick="sendCmd('/key/EPG')">GUIDE</button>
+						<button class="rmButton" onclick="sendCmd('/key/TV')">TV</button>
+						<button class="rmButton" onclick="sendCmd('/key/TV_VIDEO')">SRC</button>
+						<br/>
+						<button class="rmButton" onclick="sendCmd('/key/CC')">TEXT</button>
+						<button class="rmButton" onclick="sendCmd('/key/RF_EMANUAL')">T.OPT</button>
+						<button class="rmButton" onclick="sendCmd('/key/AD')">AD</button>
+						<button class="rmButton" onclick="sendCmd('/key/MENU')">SET</button>
+						<br/><br/>
+						<button class="rmButton" onclick="sendCmd('/key/VOLUMEUP'), getVol()">VOL &#x2B06;</button>
+						<button class="rmButton" onclick="launchApp('com.webos.app.fullhome')">HOME</button>
+						<!-- <button class="rmButton" onclick="sendCmd('/key/MUTE')">MUTE</button> -->
+						<button class="rmButton" onclick="sendCmd('/key/CHANNELUP')">CHN &#x2B06;</button>
+						<br/>
+						<button class="rmButton" onclick="sendCmd('/key/VOLUMEDOWN'), getVol()">VOL &#x2B07;</button>
+						<button class="rmButton" onclick="sendCmd('/key/RF_HOME')">APPS</button>
+						<button class="rmButton" onclick="sendCmd('/key/CHANNELDOWN')">CHN &#x2B07;</button>
+						<br/><br/>
+						<button class="rmButton" onclick="sendCmd('/key/SEARCH')">SRCH</button>
+						<button class="rmButton" onclick="sendCmd('/key/UP')">&#x2B06;</button>
+						<button class="rmButton" onclick="sendCmd('/key/TIMER')">REC</button>
+						<br/>
+						<button class="rmButton" onclick="sendCmd('/key/LEFT')">&#x2B05;</button>
+						<button class="rmButton" onclick="sendCmd('/key/ENTER')">OK</button>
+						<button class="rmButton" onclick="sendCmd('/key/RIGHT')">&#x27A1;</button>
+						<br/>
+						<button class="rmButton" onclick="sendCmd('/key/BACK')">BACK</button>
+						<button class="rmButton" onclick="sendCmd('/key/DOWN')">&#x2B07;</button>
+						<button class="rmButton" onclick="sendCmd('/key/EXIT')">EXIT</button>
+						<br/><br/>
+						<button class="rmButton" onclick="sendCmd('/key/1')">1</button>
+						<button class="rmButton" onclick="sendCmd('/key/2')">2</button>
+						<button class="rmButton" onclick="sendCmd('/key/3')">3</button>
+						<br/>
+						<button class="rmButton" onclick="sendCmd('/key/4')">4</button>
+						<button class="rmButton" onclick="sendCmd('/key/5')">5</button>
+						<button class="rmButton" onclick="sendCmd('/key/6')">6</button>
+						<br/>
+						<button class="rmButton" onclick="sendCmd('/key/7')">7</button>
+						<button class="rmButton" onclick="sendCmd('/key/8')">8</button>
+						<button class="rmButton" onclick="sendCmd('/key/9')">9</button>
+						<br/>
+						<button class="rmButton" onclick="sendCmd('/key/LIST')">LIST</button>
+						<button class="rmButton" onclick="sendCmd('/key/0')">0</button>
+						<button class="rmButton" onclick="sendCmd('/key/FLASHBACK')">...</button>
+						<br/><br/>
+						<button class="rmButton" onclick="sendCmd('/key/STOP')">&#x23F9;</button>
+						<button class="rmButton" onclick="sendCmd('/key/PAUSE')">&#x23F8;</button>
+						<button class="rmButton" onclick="sendCmd('/key/PLAY')">&#x23F9;</button>
+						<br/>
+						<button class="rmButton" onclick="sendCmd('/key/REWIND')">&#x23EA;</button>
+						<button class="rmButton" onclick="sendCmd('/key/FASTFORWARD')">&#x23E9;</button>
+						<br/><br/>
+						<button class="rmButton" onclick="sendCmd('/key/RED')">&#x1F7E5;</button>
+						<button class="rmButton" onclick="sendCmd('/key/GREEN')">&#x1F7E9;</button>
+						<button class="rmButton" onclick="sendCmd('/key/BLUE')">&#x1F7E6;</button>
+						<button class="rmButton" onclick="sendCmd('/key/YELLOW')">&#x1F7E8;</button>
+						<br/><br/>
+					</td>
+				</tr></table>
+			</div>
+			<!-- Remote end -->
+
+			<!-- Volume slider begin -->
+			<div class="volume">
+				<table><tr>
+					<td class="description">
+						<h3>Volume</h3>
+					</td><td>
+						<span id="volDisplay" class="cmdFeedback">--</span><br/>
+						<input type="range" id="volSlider" name="volSlider" min="0" max="100" oninput="document.getElementById('volDisplay').innerText = this.value" onchange="setVol()"/>
+					</td>
+				</tr></table>
+			</div>
+			<!-- Volume slider end -->
+					
+			<!-- Backlight begin -->
+			<div class="backlight">
+				<table><tr>
+					<td class="description">
+						<h3>Backlight<br/>Brightness</h3>
+					</td><td>
+						<span id="blDisplay" class="cmdFeedback">--</span><br />
+						<input type="range" id="blSlider" name="blSlider" min="0" max="100" step="5" oninput="document.getElementById('blDisplay').innerText = this.value" onchange="setBL()"/>
+					</td>
+				</tr></table>
+			</div>
+			<!-- Backlight end -->
+
+			<!-- App launcher begin -->
+			<div class="appLauncher">
+				<table><tr>
+					<td class="description">
+						<h3>Launch<br/>app</h3>
+					</td><td>
+						<input id="appInput" type="text" autocomplete="off"/>
+						<script>
+							document.getElementById('appInput').addEventListener("keypress", function(event) {
+								if (event.key === "Enter") {
+									event.preventDefault();
+									document.getElementById('appLaunch').click();
+								}
+							});
+						</script>
+						<button id="appLaunch" onclick="launchApp(document.getElementById('appInput').value), document.getElementById('appInput').value = ''", ">Launch</button>
+					</td>
+				</tr></table>
+			</div>
+			<!-- App launcher end -->
+
+			<!-- Text input begin -->
+			<div class="textInput">
+				<table><tr>
+					<td class="description">
+						<h3>Text<br/>input</h3>
+					</td><td>
+						<input id="textInput" type="text" />
+						<script>
+							document.getElementById('textInput').addEventListener("keypress", function(event) {
+								if (event.key === "Enter") {
+									event.preventDefault();
+									document.getElementById('textSend').click();
+								}
+							});
+						</script>
+						<button id="textSend" onclick="sendText(document.getElementById('textInput').value), document.getElementById('textInput').value = ''", ">Send</button>
+					</td>
+				</tr></table>
+			</div>
+			<!-- Text input end -->
+			
+			<br/><hr/><br/>
+
+			<!-- Management begin -->
+			<div class="power">
+				<table><tr>
+					<td class="description">
+						<h3>Management</h3>
+					</td><td>
+						<button onclick="sendCmd('/cmd/webserver/stop')">Stop<br/>webserver</button>
+						<button onclick="sendCmd('/cmd/power/reboot')">Reboot<br/>TV</button>
+					</td>
+				</tr></table>
+			</div>
+			<!-- Management end -->
+
+			<br/><br/>
+		</center>
+	</body>
+</html>
