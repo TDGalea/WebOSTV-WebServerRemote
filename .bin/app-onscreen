@@ -1,0 +1,127 @@
+#!/bin/bash
+# WebOS App Finder/Launcher by TDGalea.
+# 2026-05-12
+
+# If first parameter is "subshell", respawn self in subshell then cat the output file (fixes remote execution issue).
+if [[ "$1" == "subshell" ]]; then
+	outfile=/tmp/app-outfile
+	shift
+	nohup $0 $@ >$outfile &
+	wait
+	cat $outfile
+	rm $outfile
+	exit 0
+fi
+
+printHelp(){
+	printf "Usage: $0 [launch/search/exit/get] {app name}\n"
+	printf \\n
+	printf "[app name] can be any part of the full app ID - required in all cases but 'get'\n"
+	printf "For example, if you wanted to switch to HDMI2, the full app ID may be 'com.webos.app.hdmi2',\n"
+	printf "but when using this script, you can do:\n"
+	printf "$0 launch hdmi2\n"
+}
+
+# Menu generator.
+createMenu() {
+	message="$1"
+	shift
+	
+	json="{
+		\"message\":\"$message\",
+		\"buttons\":["
+
+	until [[ -z "$1" ]]; do
+		button="$1"
+		[[ -z "$2" ]] && app="bogus" || app="$2"
+		shift 2
+		json="$json""{
+			\"label\":\"$button\",
+			\"onclick\":\"luna://com.webos.service.applicationmanager/launch\",
+			\"params\":{
+				\"id\":\"$app\"
+			}
+		}"
+		[[ ! -z "$1" ]] && json="$json"","
+	done
+
+	json="$json""]}"
+	luna-send -n 1 -f -a com.webos.surfacemanager luna://com.webos.notification/createAlert "$json"
+	return $?
+}
+
+# Notification generator.
+createNotification() {
+	luna-send -n 1 -f -a com.webos.app.test luna://com.webos.notification/createToast \
+	"{
+		\"sourceId\":\"null\",
+		\"onclick\": {\"appId\":\"null\"},
+		\"message\":\"$*\",
+		\"noaction\":false,
+		\"persistent\":false
+	}" >/dev/null 2>&1
+	return $?
+}
+
+# Parameter checks.
+[[ -z $1 ]] && 	printf "Two parameters required.\nIf you need help, just ask.\n" && exit 2
+[[ "$1" == "help" ]] && printHelp && exit 0
+
+valid=0
+case "$1" in
+	"launch") valid=1;;
+	"search") valid=1;;
+	  "exit") valid=1;;
+	   "get") valid=1;;
+esac
+[[ $valid -ne 1 ]] && printf "'$1' is not a valid command.\n" && exit 1
+
+if [[ "$1" == "get" ]]; then
+	appID=$(luna-send -f -n 1 luna://com.webos.applicationManager/getForegroundAppInfo '{}' |\
+		grep appId |\
+		sed "s/\"/ /g" |\
+		awk '{print $3}')
+	if [[ "$2" == "name" ]]; then
+		luna-send -f -n 1 luna://com.webos.applicationManager/getAppInfo '{"id":"'$appID'"}' |\
+			grep title |\
+			sed "s/\"/\n/g" |\
+			tail -n2 | head -n1
+	else
+		printf "$appID\n"
+	fi
+	exit 0
+fi
+
+[[ -z $2 ]] && 	printf "What app do you want to $1?\n" && exit 2
+
+foundapps=$(luna-send -n 1 -f luna://com.webos.service.applicationmanager/listApps '{}' | grep folderPath | sed 's/\/\|\"\|,/ /g' | awk 'NF>1{print $NF}' | grep $2)
+count=$(luna-send -n 1 -f luna://com.webos.service.applicationmanager/listApps '{}' | grep folderPath | sed 's/\/\|\"\|,/ /g' | awk 'NF>1{print $NF}' | grep $2 | wc -l)
+
+if [ $count -le 0 ]; then
+	createNotification "No apps match '$2'."
+elif [ $count -gt 1 ]; then
+	message="<b><h3>Select an app</h3></b>"
+	x=1
+	for app in $foundapps; do
+		message="$message<br/>$x: $app"
+		buttons="$buttons $x $app "
+		let x+=1
+	done
+	createMenu "$message" $buttons
+	exit $?
+else
+	target=$foundapps
+fi
+	
+if [[ ! -z $target ]]; then
+	case $1 in
+		launch) response="$(luna-send -n 1 -f luna://com.webos.service.applicationmanager/launch '{"id":"'$target'"}')";;
+		search) printf "Found: $target\n"; exit 0;;
+		  exit) response="$(luna-send -n 1 luna://com.webos.service.applicationManager/closeByAppId '{"id":"$target"}')";;
+		     *) printf "Found: $target\nBut what does '$1' mean?\nIf you need help, just ask.\n"; exit 2;;
+	esac
+	
+	# Check success.
+	printf "$response" | grep returnValue | grep true >/dev/null 2>&1 && printf "Success.\n" || printf "Failed. luna-send response was:\n$response\n"
+	exit 0
+fi
