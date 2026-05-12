@@ -1,0 +1,31 @@
+#!/bin/bash
+# Remote rebooter script by TDGalea.
+# Intended to be used on a virtual remote, for example.
+
+tracker="/tmp/rebooting-soon"
+
+sendNotification(){
+	luna-send -n 1 -f -a com.webos.app.test luna://com.webos.notification/createToast \
+	"{
+		\"sourceId\":\"null\",
+		\"onclick\": {\"appId\":\"null\"},
+		\"message\":\"$1\",
+		\"noaction\":false,
+		\"persistent\":false
+	}" >/dev/null 2>&1
+}
+
+if [[ -f "$tracker" ]]; then
+	sendNotification "Reboot cancelled."
+	rm "$tracker"
+else
+	sendNotification "TV rebooting in 10 seconds. Cancel with the same button if needed."
+	touch "$tracker"
+	sleep 10
+	if [[ -f "$tracker" ]]; then
+		sendNotification "Rebooting now."
+		rm "$tracker"
+		reboot
+	fi
+fi
+exit 0
