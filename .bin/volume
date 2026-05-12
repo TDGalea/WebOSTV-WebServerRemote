@@ -1,0 +1,98 @@
+#!/bin/bash
+# Volume control script by TDGalea.
+
+# If first parameter is "subshell", respawn self in subshell then cat the output file (this fixes some remote execution issues).
+if [[ "$1" == "subshell" ]]; then
+	outfile=/tmp/volume-outfile
+	shift
+	nohup $0 $@ >$outfile &
+	wait
+	cat $outfile
+	rm $outfile
+	exit 0
+fi
+
+# If first parameter is "plain", set that variable to 1 for future reference, then shift the arguments. This trims the output to just the number.
+if [[ "$1" == "plain" ]]; then
+	plain=1
+	shift
+else
+	plain=0
+fi
+
+printHelp(){
+	cat << EOF
+Usage:	$0 [subshell] [plain] {get/set/raise/lower} #
+
+e.g.:	$0 set 45
+			Sets volume to 45%
+		$0 subshell set 40
+			Sets volume to 40%, but spawns the script in a subshell (this fixes some remote execution issues).
+		$0 raise 5
+			Raises volume level by 5% if possible.
+		$0 plain set 50
+			Strips out all text output, leaving only the volume level. Useful for parsing for formatting your own way.
+
+If no argument is provided, or if "get" is given, the script will print the current volume level.
+EOF
+}
+
+# Get current volume level.
+current=$(luna-send -f -n 1 'luna://com.webos.audio/getVolume' '{}' | grep \"volume\" | sed "s/    \"volume\": //g" | sed "s/,//g")
+
+# Print current volume level (and if "plain", then JUST that - nothing else).
+printCurrent(){
+	[[ $plain -eq 0 ]] && printf "Current volume level: "
+	printf "$current"
+	[[ $plain -eq 0 ]] && printf "%%\n"
+	return 0
+}
+
+# Set new volume level.
+setNew(){
+	[[ -z $1 ]] && printf "No level specified. Please provide a number between 0-100.\n" >&2 && exit 1
+	new=$1
+	
+	# Check 0-100 boundary.
+	[[ $new -gt 100 ]] && new=100
+	[[ $new -lt 0 ]] && new=0
+	
+	/usr/bin/luna-send -f -n 1 'luna://com.webos.audio/setVolume' "{\"volume\":$new}"  | grep ": true" >/dev/null
+	if [[ $? -eq 0 ]]; then
+		[[ $plain -eq 0 ]] && printf "Volume set to "
+		printf "$new"
+		[[ $plain -eq 0 ]] && printf "%%\n"
+		return 0
+	else
+		printf "Failed.\n"
+		return 1
+	fi
+}
+
+# Raise the volume level by X%, if possible.
+raise(){
+	[[ -z $1 ]] && amnt=5 || amnt=$1
+	let new=$current+$amnt
+	setNew $new
+	return $?
+}
+
+# Lower the volume level by 5%, if possible.
+lower(){
+	[[ -z $1 ]] && amnt=5 || amnt=$1
+	let new=$current-$amnt
+	setNew $new
+	return $?
+}
+
+###########
+
+case "$1" in
+	""|"get" )	printCurrent $2;;
+	    "set")	setNew $2;;
+	  "raise")	raise $2;;
+	  "lower")	lower $2;;
+	   "help")	printHelp;;
+	        *)	printf "Unknown command: $1\n" >&2; printHelp >&2;;
+esac
+exit $?
