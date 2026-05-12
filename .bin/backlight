@@ -1,0 +1,128 @@
+#!/bin/bash
+# WebOS Backlight control script by TDGalea
+
+# If first parameter is "subshell", respawn self in subshell then cat the output file (this fixes some remote execution issues).
+if [[ "$1" == "subshell" ]]; then
+	outfile=/tmp/backlight-outfile
+	shift
+	nohup $0 $@ >$outfile &
+	wait
+	cat $outfile
+	rm $outfile
+	exit 0
+fi
+
+# If first parameter is "plain", set that variable to 1 for future reference, then shift the arguments. This trims the output to just the number.
+if [[ "$1" == "plain" ]]; then
+	plain=1
+	shift
+else
+	plain=0
+fi
+
+printHelp(){
+	cat << EOF
+Usage:  $0 {subshell} [plain] {get/set/raise/lower} #
+
+e.g.:	$0 set 45\n"
+			Sets backlight to 45%
+		$0 subshell set 40
+			Sets backlight to 40%%, but spawns the script in a subshell (this fixes some remote execution issues).
+		$0 raise 5
+			Raises backlight level by 5% if possible.
+		$0 plain set 50
+			Strips out all text output, leaving only the backlight brightness. Useful for parsing for formatting your own way.
+
+If no argument is provided, or if "get" is given, the script will print the current backlight level.
+EOF
+}
+
+# Get current backlight level.
+current=$(luna-send -f -n 1 'luna://com.webos.settingsservice/getSystemSettings' '{"category":"picture", "keys": ["backlight"]}' | grep backlight | sed "s/\        \"backlight\": //g" | sed "s/\"//g")
+[[ ! -f /tmp/backlight-state ]] && printf "1" >/tmp/backlight-state
+
+# Round brightness to nearest 5%.
+round(){
+	current="$(printf $current | awk '{for (i=1; i<=NF; i++) $i = int( ($i+2) / 5) * 5} 1')"
+}
+
+# Print current backlight level (and if "plain", then JUST that - nothing else).
+printCurrent(){
+	[[ $plain -eq 0 ]] && printf "Current backlight level: "
+	[[ "$(cat /tmp/backlight-state)" -eq 1 ]] && printf "$current" || printf "off"
+	[[ $plain -eq 0 ]] && printf "%%\n"
+	return 0
+}
+
+# Set new backlight level.
+setNew(){
+	[[ -z $1 ]] && printf "No level specified. Please provide a number between 0-100.\n" >&2 && exit 1
+	new=$1
+	
+	# Check 0-100 boundary.
+	[[ $new -gt 100 ]] && new=100
+	[[ $new -lt 0 ]] && new=0
+	
+	/usr/bin/luna-send -n 1 'luna://com.webos.settingsservice/setSystemSettings' '{"settings":{"backlight":'$new'},"category":"picture"}' | grep ":true" >/dev/null
+	if [[ $? -eq 0 ]]; then
+		[[ $plain -eq 0 ]] && printf "Brightness set to "
+		printf "$new"
+		[[ $plain -eq 0 ]] && printf "%%\n"
+		return 0
+	else
+		printf "Failed.\n"
+		return 1
+	fi
+}
+
+# Raise the backlight level by 5%, if possible.
+raise(){
+	round
+	[[ -z $1 ]] && amnt=5 || amnt=$1
+	let new=$current+$amnt
+	setNew $new
+	return $?
+}
+
+# Lower the backlight level by 5%, if possible.
+lower(){
+	round
+	[[ -z $1 ]] && amnt=5 || amnt=$1
+	let new=$current-$amnt
+	setNew $new
+	return $?
+}
+
+# Toggle backlight on/off.
+toggle(){
+	if [[ -z $1 ]]; then
+		[[ -f /tmp/backlight-state ]] && backlightState="$(cat /tmp/backlight-state)" || backlightState=1
+		[[ $backlightState -eq 1 ]] && toggle off || toggle on
+	else
+		case "$1" in
+			"off")
+				luna-send -n 1 "luna://com.webos.service.tvpower/power/turnOffScreen" '{}' >/dev/null 2>&1
+				[[ $plain -eq 0 ]] && printf "Backlight toggled off.\n" || printf "off"
+				printf "0" >/tmp/backlight-state;;
+			"on")
+			 	luna-send -n 1 "luna://com.webos.service.tvpower/power/turnOnScreen" '{}' >/dev/null 2>&1
+			 	printf "1" >/tmp/backlight-state
+				printCurrent;;
+			*)
+				printf "'$1' is not a valid state. Please specify on/off, or just toggle.\n" >&2; exit 1;;
+		esac
+	fi
+}		
+
+###########
+
+case "$1" in
+	""|"get" )	printCurrent $2;;
+	    "set")	setNew $2;;
+	  "raise")	raise $2;;
+	  "lower")	lower $2;;
+	 "toggle")	toggle $2;;
+	   "help")	printHelp;;
+	        *)	printf "Unknown command: $1\n" >&2; printHelp >&2;;
+esac
+exit $?
