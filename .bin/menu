@@ -1,0 +1,32 @@
+#!/bin/bash
+# On-screen options messagebox generator by TDGalea.
+# Right now, the buttons can only be configured to launch apps.
+
+[[ -z "$1" ]] && printf "No message specified. Need a message and at least one button.\n" >&2 && exit 1
+[[ -z "$2" ]] && printf "No buttons specified. Need a message and at least one button.\n" >&2 && exit 1
+
+message="$1"
+shift
+
+json="{
+	\"message\":\"$message\",
+	\"buttons\":["
+
+until [[ -z "$1" ]]; do
+	button="$1"
+	[[ -z "$2" ]] && app="bogus" || app="$2"
+	shift 2
+	json="$json""{
+			\"label\":\"$button\",
+			\"onclick\":\"luna://com.webos.service.applicationmanager/launch\",
+			\"params\":{
+				\"id\":\"$app\"
+			}
+		}"
+		[[ ! -z "$1" ]] && json="$json"","
+done
+
+json="$json""]}"
+
+luna-send -n 1 -f -a com.webos.surfacemanager luna://com.webos.notification/createAlert "$json"
+exit $?
