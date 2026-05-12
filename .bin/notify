@@ -1,0 +1,14 @@
+#!/bin/bash
+# WebOS notification generator by TDGalea.
+
+[[ -z "$1" ]] && printf "No message provided.\n" >&2 && exit 2
+
+luna-send -n 1 -f -a com.webos.app.test luna://com.webos.notification/createToast \
+"{
+	\"sourceId\":\"null\",
+	\"onclick\": {\"appId\":\"null\"},
+	\"message\":\"$*\",
+	\"noaction\":false,
+	\"persistent\":false
+}" >/dev/null 2>&1
+exit $?
