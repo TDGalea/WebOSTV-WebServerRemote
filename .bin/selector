@@ -1,0 +1,32 @@
+#!/bin/bash
+# Numbered option selector script by TDGalea.
+
+# Not enough options.
+[[ -z $2 ]] && printf "At least two options required.\n" >&2 && exit 2
+
+# Set how many options we have for later. Then display them all, numbered.
+count=$(printf "$*" | wc -w)
+
+x=1
+for option in $@; do
+	printf "$x: $option" | sed "s/_/ /g" >&2; printf \\n >&2
+	let x+=1
+done
+
+# Have the user select one by typing a number.
+selNum=0
+until [[ $selNum -ge 1 ]] && [[ $selNum -le $count ]]; do
+	printf " > " >&2
+	read selNum
+	[[ ! $selNum -ge 1 ]] || [[ ! $selNum -le $count ]] && printf "Invalid selection.\n" >&2
+done
+
+# Figure out what was selected.
+x=1
+for selection in $@; do
+	[[ $x -eq $selNum ]] && break
+	let x+=1
+done
+
+printf "$selection"
+exit 0
